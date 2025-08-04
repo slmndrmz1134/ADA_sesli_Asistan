@@ -27,7 +27,7 @@ import wave
 import atexit
 
 # Konfigürasyon
-GEMINI_API_KEY = "AIzaSyBtxHw82u-Y3uEK2Uh-kvk7gwEVRTbFtuI"  # Gemini API anahtarınızı buraya girin
+GEMINI_API_KEY = ""  # Gemini API anahtarınızı buraya girin
 FOTO_KLASORU = r"C:\Users\SELMAN\OneDrive\Pictures\Camera Roll"
 
 # Gemini 2.0 Flash-lite modeli yapılandır
