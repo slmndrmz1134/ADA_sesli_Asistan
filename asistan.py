@@ -23,6 +23,8 @@ from TTS.api import TTS
 import torch
 import tempfile
 import pygame
+import wave
+import atexit
 
 # Konfigürasyon
 GEMINI_API_KEY = "AIzaSyBtxHw82u-Y3uEK2Uh-kvk7gwEVRTbFtuI"  # Gemini API anahtarınızı buraya girin
@@ -40,15 +42,14 @@ VK_VOLUME_UP = 0xAF
 VK_VOLUME_DOWN = 0xAE
 VK_VOLUME_MUTE = 0xAD
 
-class GelismisADA:
-  
 
-    # Diğer fonksiyonlarınız burada...
+
+class GelismisADA:
 
     def gemini_ile_komut_isle(self, komut):
         """Gemini 2.0 Flash-lite ile akıllı komut işleme"""
         try:
-            prompt = f"""Sen ADA adında Türkçe konuşan bir sesli asistansın. Kullanıcının sorusunu veya komutunu dostça ve çok küfürlü bir şekilde yanıtla.'''
+            prompt = f"""Sen ADA adında Türkçe konuşan bir sesli asistansın. Kullanıcının sorusunu veya komutunu dostça ve profesyonel bir şekilde yanıtla.'''
 
 Kullanıcı: {komut}
 ADA: """
@@ -126,6 +127,8 @@ ADA: """
             self.ses_kontrol_mevcut = False
             print("❌ pycaw yüklü değil. 'pip install pycaw' çalıştırın")
         
+   
+        
         print("🎤 ADA Asistan başlatılıyor...")
 
     def klasorleri_olustur(self):
@@ -154,8 +157,14 @@ ADA: """
             
         except Exception as e:
             print(f"❌ TTS hatası: {e}")
-            print("🔧 Lütfen şu komutu çalıştırın: pip install TTS")
-            self.tts_engine = None
+            try:
+                print("🔄 Alternatif TTS modeli deneniyor...")
+                self.tts_engine = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC")
+                print("✅ İngilizce TTS hazır")
+            except Exception as e2:
+                print(f"❌ Alternatif TTS hatası: {e2}")
+                print("🔧 Lütfen şu komutu çalıştırın: pip install TTS")
+                self.tts_engine = None
 
     def seslendirme(self, metin):
         """Coqui TTS ile seslendirme sistemi"""
@@ -170,24 +179,35 @@ ADA: """
             ses_dosyasi = os.path.join(self.temp_ses_klasoru, f"ada_tts_{int(time.time())}.wav")
             
             # TTS ile ses dosyası oluştur
+            print(f"🎵 TTS dosyası oluşturuluyor: {ses_dosyasi}")
             self.tts_engine.tts_to_file(text=metin, file_path=ses_dosyasi)
             
-            # pygame ile ses dosyasını çal
-            pygame.mixer.music.load(ses_dosyasi)
-            pygame.mixer.music.play()
-            
-            # Çalma bitene kadar bekle
-            while pygame.mixer.music.get_busy():
-                time.sleep(0.1)
-            
-            # Geçici dosyayı sil
-            try:
-                os.remove(ses_dosyasi)
-            except:
-                pass
+            # Dosyanın oluştuğunu kontrol et
+            if os.path.exists(ses_dosyasi):
+                print("✅ TTS dosyası oluşturuldu")
+                
+                # pygame ile ses dosyasını çal
+                pygame.mixer.music.load(ses_dosyasi)
+                pygame.mixer.music.play()
+                print("🎵 Ses çalınıyor...")
+                
+                # Çalma bitene kadar bekle
+                while pygame.mixer.music.get_busy():
+                    time.sleep(0.1)
+                
+                print("✅ Ses çalma tamamlandı")
+                
+                # Geçici dosyayı sil
+                try:
+                    os.remove(ses_dosyasi)
+                except:
+                    pass
+            else:
+                print("❌ TTS dosyası oluşturulamadı")
                 
         except Exception as e:
             print(f"❌ Ses çıkışı hatası: {e}")
+            print(f"❌ Hata detayı: {type(e).__name__}")
 
     def gui_baslat(self):
         """GUI thread'ini başlat"""
@@ -295,6 +315,8 @@ ADA: """
             print("🔧 Mikrofon kalibre ediliyor...")
             self.r.adjust_for_ambient_noise(source, duration=2)
             print(f"📊 Enerji eşiği: {self.r.energy_threshold}")
+        
+       
         
         while self.dinleme_aktif:
             try:
@@ -408,6 +430,7 @@ ADA: """
             yanit = "Görüşmek üzere! Kapanıyorum."
             self.seslendirme(yanit)
             self.gui_guncelle(ada_metni=yanit)
+            self.ses_kayitci.kayit_durdur()
             self.dinleme_aktif = False
             return
         
